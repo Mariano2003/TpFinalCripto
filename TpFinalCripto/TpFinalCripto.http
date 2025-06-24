@@ -1,0 +1,6 @@
+@TpFinalCripto_HostAddress = http://localhost:5189
+
+GET {{TpFinalCripto_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
