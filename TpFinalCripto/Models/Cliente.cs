@@ -14,6 +14,6 @@ namespace TpFinalCripto.Models
         [EmailAddress]
         public string Email { get; set; }
 
-        public ICollection<Transaccion> Transacciones { get; set; }
+        public ICollection<Transaccion> Transacciones { get; set; } = new List<Transaccion>();
     }
 }

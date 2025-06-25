@@ -12,7 +12,7 @@ namespace TpFinalCripto.DTOs
         public decimal CryptoAmount { get; set; }
 
         [Required]
-        public int ClientId { get; set; }
+        public int ClienteId { get; set; }
 
         [Required]
         [RegularExpression("purchase|sale", ErrorMessage = "Action debe ser 'purchase' o 'sale'")]

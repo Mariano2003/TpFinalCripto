@@ -1,5 +1,6 @@
 ﻿using TpFinalCripto.Models.Externos;  // Importamos el modelo para deserializar la respuesta externa de la API CriptoYa
-using System.Net.Http.Json;             // Para usar métodos de HttpClient que manejan JSON automáticamente
+using System.Net.Http.Json;
+using System.Text.Json;             // Para usar métodos de HttpClient que manejan JSON automáticamente
 
 namespace TpFinalCripto.ServiciosExternos
 {
@@ -24,18 +25,31 @@ namespace TpFinalCripto.ServiciosExternos
         // Método que consulta la API externa y devuelve el precio actual de la cripto especificada
         public async Task<decimal> ObtenerPrecioCripto(string cryptoCode)
         {
-            var client = _httpClientFactory.CreateClient(); // Creamos un cliente HTTP listo para usarse
-            string url = $"https://criptoya.com/api/satoshitango/{cryptoCode}/ars"; // Armamos la URL con la cripto y la moneda ARS
+            var client = _httpClientFactory.CreateClient();
+            string url = $"https://criptoya.com/api/satoshitango/{cryptoCode}/ars";
 
-            // Hacemos la llamada GET a la API y deserializamos automáticamente la respuesta JSON en nuestro modelo CriptoYaResponse
-            var response = await client.GetFromJsonAsync<CriptoYaResponse>(url);
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"Error al consultar la API: {response.StatusCode}");
+            }
 
-            // Si la respuesta fue nula, tiramos un error para que quien llame sepa que algo salió mal
-            if (response == null)
-                throw new Exception("Respuesta nula de la API");
+            var content = await response.Content.ReadAsStringAsync();
 
-            // Retornamos el valor 'ask' (precio para comprar) que viene en la respuesta JSON
-            return response.ask;
+            try
+            {
+                var json = System.Text.Json.JsonDocument.Parse(content);
+                if (!json.RootElement.TryGetProperty("ask", out var askElement))
+                {
+                    throw new Exception("El campo 'ask' no se encuentra en la respuesta.");
+                }
+
+                return askElement.GetDecimal();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Respuesta no es JSON válido: {ex.Message}");
+            }
         }
     }
 }

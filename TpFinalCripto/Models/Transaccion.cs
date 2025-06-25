@@ -22,7 +22,7 @@ namespace TpFinalCripto.Models
         [Required]
         public DateTime FechaHora { get; set; }
 
-        public int ClientId { get; set; }
+        public int ClienteId { get; set; }
         public Cliente Cliente { get; set; }
     }
 }
