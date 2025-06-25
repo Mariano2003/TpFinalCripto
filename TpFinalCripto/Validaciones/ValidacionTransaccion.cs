@@ -19,12 +19,12 @@ namespace TpFinalCripto.Validaciones
 
             // Calculamos cuánto compró el cliente de esta criptomoneda (suma total de compras)
             var totalComprado = await context.Transacciones
-                .Where(t => t.ClientId == dto.ClientId && t.CryptoCode == dto.CryptoCode && t.Action == "purchase")
+                .Where(t => t.ClienteId == dto.ClienteId && t.CryptoCode == dto.CryptoCode && t.Action == "purchase")
                 .SumAsync(t => t.CryptoAmount);
 
             // Calculamos cuánto vendió el cliente de esta criptomoneda (suma total de ventas)
             var totalVendido = await context.Transacciones
-                .Where(t => t.ClientId == dto.ClientId && t.CryptoCode == dto.CryptoCode && t.Action == "sale")
+                .Where(t => t.ClienteId == dto.ClienteId && t.CryptoCode == dto.CryptoCode && t.Action == "sale")
                 .SumAsync(t => t.CryptoAmount);
 
             // Saldo actual es la diferencia entre lo comprado y lo vendido
