@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 
 namespace TpFinalCripto.Models
 {
@@ -17,7 +16,7 @@ namespace TpFinalCripto.Models
         {
             modelBuilder.Entity<Transaccion>()
                 .HasOne(t => t.Cliente)
-                .WithMany()
+                .WithMany(c => c.Transacciones)
                 .HasForeignKey(t => t.ClienteId);
 
             modelBuilder.Entity<Transaccion>()

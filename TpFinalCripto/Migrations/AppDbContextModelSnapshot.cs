@@ -58,16 +58,14 @@ namespace TpFinalCripto.Migrations
                     b.Property<int>("ClienteId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ClienteId1")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("CryptoAmount")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
 
                     b.Property<string>("CryptoCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<DateTime>("FechaHora")
                         .HasColumnType("datetime2");
@@ -80,22 +78,16 @@ namespace TpFinalCripto.Migrations
 
                     b.HasIndex("ClienteId");
 
-                    b.HasIndex("ClienteId1");
-
                     b.ToTable("Transacciones");
                 });
 
             modelBuilder.Entity("TpFinalCripto.Models.Transaccion", b =>
                 {
                     b.HasOne("TpFinalCripto.Models.Cliente", "Cliente")
-                        .WithMany()
+                        .WithMany("Transacciones")
                         .HasForeignKey("ClienteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("TpFinalCripto.Models.Cliente", null)
-                        .WithMany("Transacciones")
-                        .HasForeignKey("ClienteId1");
 
                     b.Navigation("Cliente");
                 });
