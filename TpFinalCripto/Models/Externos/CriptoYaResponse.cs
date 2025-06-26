@@ -1,9 +1,16 @@
-﻿namespace TpFinalCripto.Models.Externos
+﻿using System.Text.Json.Serialization;
+
+namespace TpFinalCripto.Models.Externos
 {
     public class CriptoYaResponse
     {
-        public decimal ask { get; set; }
-        public decimal bid { get; set; }
-        public long time { get; set; }
+        [JsonPropertyName("ask")]
+        public decimal Ask { get; set; }
+
+        [JsonPropertyName("bid")]
+        public decimal Bid { get; set; }
+
+        [JsonPropertyName("time")]
+        public long Time { get; set; }
     }
 }
