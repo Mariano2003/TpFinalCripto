@@ -1,5 +1,5 @@
 ﻿using TpFinalCripto.Models.Externos;
-using System.Net.Http.Json;
+using System.Net.Http;
 using System.Text.Json;
 
 namespace TpFinalCripto.ServiciosExternos
@@ -44,18 +44,16 @@ namespace TpFinalCripto.ServiciosExternos
 
             try
             {
-                var json = JsonDocument.Parse(content);
+                var data = JsonSerializer.Deserialize<CriptoYaResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (data == null)
+                    throw new Exception("Respuesta de la API vacía o inválida.");
 
-                if (!json.RootElement.TryGetProperty("ask", out var askElement))
-                    throw new Exception("El campo 'ask' no se encuentra en la respuesta.");
-
-                return askElement.GetDecimal();
+                return data.Ask;
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
-                throw new Exception($"Respuesta no es JSON válido: {content}");
+                throw new Exception($"Error al deserializar respuesta JSON: {ex.Message}");
             }
         }
-
     }
 }
