@@ -1,40 +1,49 @@
-﻿using TpFinalCripto.DTOs;   // Importa los DTOs para usar en las validaciones (ej: TransaccionCreateDto)
-using TpFinalCripto.Models; // Importa los modelos (ej: Transaccion)
-using Microsoft.EntityFrameworkCore; // Para usar métodos asíncronos y consultas LINQ a la BD
+﻿using TpFinalCripto.DTOs;
+using TpFinalCripto.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace TpFinalCripto.Validaciones
 {
-    public class ValidacionTransaccion
+    public static class ValidacionTransaccion
     {
-        // Método estático para validar que la acción sea válida, o sea "purchase" o "sale"
-        // ¿Qué más podría ser? "bailar" no es una acción válida en este contexto.
+        // Lista ampliada para aceptar códigos y nombres comunes
+        private static readonly HashSet<string> CriptosValidas = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "btc",
+            "eth",
+            "usdt"
+        };
+
+        public static bool EsCryptoValida(string cryptoCode) =>
+            CriptosValidas.Contains(cryptoCode);
+
+
         public static bool EsAccionValida(string accion) =>
             accion == "purchase" || accion == "sale";
 
-        // Método asíncrono para validar si el cliente tiene saldo suficiente para vender
+    
+
+        public static bool EsCantidadValida(decimal cantidad) =>
+            cantidad > 0;
+
+        public static bool EsFechaValida(DateTime fecha) =>
+            fecha <= DateTime.UtcNow;  // No permite fechas futuras
+
         public static async Task<bool> TieneSaldoSuficiente(AppDbContext context, TransaccionCreateDto dto)
         {
-            // Si la acción no es "sale" (venta), no hace falta chequear saldo porque compra no tiene límite acá
             if (dto.Action != "sale") return true;
 
-            // Calculamos cuánto compró el cliente de esta criptomoneda (suma total de compras)
             var totalComprado = await context.Transacciones
-                .Where(t => t.ClienteId == dto.ClienteId && t.CryptoCode == dto.CryptoCode && t.Action == "purchase")
+                .Where(t => t.ClienteId == dto.ClienteId && t.CryptoCode == dto.CryptoCode.ToLower() && t.Action == "purchase")
                 .SumAsync(t => t.CryptoAmount);
 
-            // Calculamos cuánto vendió el cliente de esta criptomoneda (suma total de ventas)
             var totalVendido = await context.Transacciones
-                .Where(t => t.ClienteId == dto.ClienteId && t.CryptoCode == dto.CryptoCode && t.Action == "sale")
+                .Where(t => t.ClienteId == dto.ClienteId && t.CryptoCode == dto.CryptoCode.ToLower() && t.Action == "sale")
                 .SumAsync(t => t.CryptoAmount);
 
-            // Saldo actual es la diferencia entre lo comprado y lo vendido
             var saldoActual = totalComprado - totalVendido;
 
-            // Retornamos true si la cantidad que quiere vender es menor o igual al saldo disponible
-            // Si no, false (porque no tiene saldo suficiente, y no queremos que regale cripto gratis)
             return dto.CryptoAmount <= saldoActual;
         }
     }
-
 }
-

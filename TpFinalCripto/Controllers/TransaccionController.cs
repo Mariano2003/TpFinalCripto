@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;  // Herramientas para controladores web en ASP.NET Core
-using TpFinalCripto.DTOs;          // DTOs (capas intermedias de datos)
-using TpFinalCripto.Models;        // Modelos que representan tablas de la BD
-using TpFinalCripto.ServiciosExternos; // Servicio para obtener precios de criptos desde API externa
-using TpFinalCripto.Validaciones;  // Validaciones personalizadas para transacciones
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using TpFinalCripto.DTOs;
+using TpFinalCripto.Models;
+using TpFinalCripto.ServiciosExternos;
+using TpFinalCripto.Validaciones;
 
 namespace TpFinalCripto.Controllers
 {
@@ -10,40 +11,39 @@ namespace TpFinalCripto.Controllers
     [ApiController]
     public class TransaccionController : ControllerBase
     {
-        private readonly AppDbContext _context;  // Contexto para BD
-        private readonly IServicioPrecioDeCripto _criptoPriceService;  // Servicio para precio cripto
+        private readonly AppDbContext _context;
+        private readonly IServicioPrecioDeCripto _criptoPriceService;
 
-        // Constructor con inyección de dependencias
         public TransaccionController(AppDbContext context, IServicioPrecioDeCripto criptoPriceService)
         {
             _context = context;
             _criptoPriceService = criptoPriceService;
         }
 
-        // POST: api/transaccion -> Crea una nueva transacción
+        // POST: api/transaccion
         [HttpPost]
         public async Task<ActionResult<TransaccionReadDto>> Post(TransaccionCreateDto dto)
         {
-            // Validaciones básicas con mensajes claros
-
-            // 1) Cantidad > 0
-            if (dto.CryptoAmount <= 0)
+            // Validaciones
+            if (!ValidacionTransaccion.EsCantidadValida(dto.CryptoAmount))
                 return BadRequest("La cantidad de criptomonedas debe ser mayor a 0.");
 
-            // 2) Acción válida ('purchase' o 'sale')
             if (!ValidacionTransaccion.EsAccionValida(dto.Action))
                 return BadRequest("La acción debe ser 'purchase' o 'sale'.");
 
-            // 3) Cliente existe
+            if (!ValidacionTransaccion.EsCryptoValida(dto.CryptoCode))
+                return BadRequest($"La criptomoneda '{dto.CryptoCode}' no es soportada.");
+
+            if (!ValidacionTransaccion.EsFechaValida(dto.FechaHora))
+                return BadRequest("La fecha no puede ser futura.");
+
             var cliente = await _context.Clientes.FindAsync(dto.ClienteId);
             if (cliente == null)
                 return BadRequest("Cliente no encontrado.");
 
-            // 4) Si es venta, validar saldo suficiente con tu método async
             if (!await ValidacionTransaccion.TieneSaldoSuficiente(_context, dto))
                 return BadRequest("Saldo insuficiente para realizar la venta.");
 
-            // 5) Obtener precio actual desde servicio externo
             decimal precioUnitario;
             try
             {
@@ -51,17 +51,14 @@ namespace TpFinalCripto.Controllers
             }
             catch (Exception ex)
             {
-                // Captura errores del servicio externo y devuelve error 500
                 return StatusCode(500, $"Error al obtener precio de la criptomoneda: {ex.Message}");
             }
 
-            // 6) Calcular monto total (precio * cantidad)
             var montoTotal = precioUnitario * dto.CryptoAmount;
 
-            // 7) Crear el objeto transacción para guardar en BD
             var transaccion = new Transaccion
             {
-                CryptoCode = dto.CryptoCode.ToLower(),  // uniformizar a minúsculas
+                CryptoCode = dto.CryptoCode.ToLower(),
                 Action = dto.Action,
                 ClienteId = dto.ClienteId,
                 CryptoAmount = dto.CryptoAmount,
@@ -69,11 +66,9 @@ namespace TpFinalCripto.Controllers
                 FechaHora = dto.FechaHora
             };
 
-            // 8) Agregar al contexto y guardar cambios
             _context.Transacciones.Add(transaccion);
             await _context.SaveChangesAsync();
 
-            // 9) Preparar DTO para la respuesta (solo campos públicos)
             var transaccionReadDto = new TransaccionReadDto
             {
                 Id = transaccion.Id,
@@ -85,8 +80,112 @@ namespace TpFinalCripto.Controllers
                 FechaHora = transaccion.FechaHora
             };
 
-            // 10) Retornar CreatedAtAction con el resultado y status 201
-            return CreatedAtAction(nameof(Post), new { id = transaccion.Id }, transaccionReadDto);
+            return CreatedAtAction(nameof(GetById), new { id = transaccion.Id }, transaccionReadDto);
+        }
+
+        // GET: api/transaccion
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<TransaccionReadDto>>> GetAll()
+        {
+            var transacciones = await _context.Transacciones.ToListAsync();
+
+            var result = transacciones.Select(t => new TransaccionReadDto
+            {
+                Id = t.Id,
+                CryptoCode = t.CryptoCode,
+                Action = t.Action,
+                ClienteId = t.ClienteId,
+                CryptoAmount = t.CryptoAmount,
+                Money = t.Money,
+                FechaHora = t.FechaHora
+            }).OrderByDescending(t => t.FechaHora).ToList();
+
+            return Ok(result);
+        }
+
+        // GET: api/transaccion/{id}
+        [HttpGet("{id}")]
+        public async Task<ActionResult<TransaccionReadDto>> GetById(int id)
+        {
+            var transaccion = await _context.Transacciones.FindAsync(id);
+            if (transaccion == null)
+                return NotFound();
+
+            var dto = new TransaccionReadDto
+            {
+                Id = transaccion.Id,
+                CryptoCode = transaccion.CryptoCode,
+                Action = transaccion.Action,
+                ClienteId = transaccion.ClienteId,
+                CryptoAmount = transaccion.CryptoAmount,
+                Money = transaccion.Money,
+                FechaHora = transaccion.FechaHora
+            };
+
+            return Ok(dto);
+        }
+
+        // PATCH: api/transaccion/{id}
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> Patch(int id, TransaccionUpdateDto dto)
+        {
+            var transaccion = await _context.Transacciones.FindAsync(id);
+            if (transaccion == null)
+                return NotFound();
+
+            // Actualizamos CryptoAmount si viene y validamos
+            if (dto.CryptoAmount.HasValue)
+            {
+                if (!ValidacionTransaccion.EsCantidadValida(dto.CryptoAmount.Value))
+                    return BadRequest("La cantidad debe ser mayor a 0.");
+
+                transaccion.CryptoAmount = dto.CryptoAmount.Value;
+
+                // Recalculamos Money con el precio actual de la cripto
+                try
+                {
+                    var precioUnitario = await _criptoPriceService.ObtenerPrecioCripto(transaccion.CryptoCode);
+                    transaccion.Money = precioUnitario * transaccion.CryptoAmount;
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, $"Error al obtener precio de la criptomoneda: {ex.Message}");
+                }
+            }
+
+            // Actualizamos FechaHora si viene y validamos
+            if (dto.FechaHora.HasValue)
+            {
+                if (!ValidacionTransaccion.EsFechaValida(dto.FechaHora.Value))
+                    return BadRequest("La fecha no puede ser futura.");
+                transaccion.FechaHora = dto.FechaHora.Value;
+            }
+
+            // Money no se debe actualizar directamente si CryptoAmount cambia,
+            // por eso ignoramos dto.Money en ese caso.
+            // Si viene y no se cambió CryptoAmount, actualizamos solo si no es nulo.
+            if (dto.Money.HasValue && !dto.CryptoAmount.HasValue)
+            {
+                transaccion.Money = dto.Money.Value;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        // DELETE: api/transaccion/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var transaccion = await _context.Transacciones.FindAsync(id);
+            if (transaccion == null)
+                return NotFound();
+
+            _context.Transacciones.Remove(transaccion);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
     }
 }

@@ -12,7 +12,7 @@ using TpFinalCripto.Models;
 namespace TpFinalCripto.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250625000446_InitialCreate")]
+    [Migration("20250625222248_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -62,16 +62,19 @@ namespace TpFinalCripto.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("CryptoAmount")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
 
                     b.Property<string>("CryptoCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<DateTime>("FechaHora")
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("Money")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");

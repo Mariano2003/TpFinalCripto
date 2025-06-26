@@ -31,9 +31,9 @@ namespace TpFinalCripto.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    CryptoCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CryptoAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Money = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    CryptoCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    CryptoAmount = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: false),
+                    Money = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Action = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     FechaHora = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ClienteId = table.Column<int>(type: "int", nullable: false)

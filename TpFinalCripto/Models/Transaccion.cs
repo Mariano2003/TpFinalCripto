@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TpFinalCripto.Models
 {
@@ -7,6 +8,7 @@ namespace TpFinalCripto.Models
         public int Id { get; set; }
 
         [Required]
+        [StringLength(10)]
         public string CryptoCode { get; set; }
 
         [Required]
@@ -23,6 +25,7 @@ namespace TpFinalCripto.Models
         public DateTime FechaHora { get; set; }
 
         public int ClienteId { get; set; }
+        [ForeignKey("ClienteId")]
         public Cliente Cliente { get; set; }
     }
 }

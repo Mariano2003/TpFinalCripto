@@ -1,55 +1,61 @@
-﻿using TpFinalCripto.Models.Externos;  // Importamos el modelo para deserializar la respuesta externa de la API CriptoYa
+﻿using TpFinalCripto.Models.Externos;
 using System.Net.Http.Json;
-using System.Text.Json;             // Para usar métodos de HttpClient que manejan JSON automáticamente
+using System.Text.Json;
 
 namespace TpFinalCripto.ServiciosExternos
 {
-    // Definimos una interfaz para el servicio que nos proveerá el precio de la criptomoneda
-    // Así podemos cambiar la implementación sin romper el resto del código. ¡Separación de responsabilidades FTW!
     public interface IServicioPrecioDeCripto
     {
-        Task<decimal> ObtenerPrecioCripto(string cryptoCode); // Método asíncrono que devuelve el precio de la cripto
+        Task<decimal> ObtenerPrecioCripto(string cryptoCode);
     }
 
-    // Implementación concreta del servicio que se conecta a la API externa CriptoYa para obtener precios
     public class ServicioPrecioDeCripto : IServicioPrecioDeCripto
     {
-        private readonly IHttpClientFactory _httpClientFactory;  // Inyectamos un factory para crear HttpClient y no andar creando clientes a lo loco
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        // Constructor que recibe el factory para crear clientes HTTP (inyección de dependencias, no es brujería)
+        // Lista de criptos válidas mínimas soportadas
+        private static readonly HashSet<string> CriptosValidas = new() { "btc", "usdt", "eth" };
+
         public ServicioPrecioDeCripto(IHttpClientFactory httpClientFactory)
         {
             _httpClientFactory = httpClientFactory;
         }
 
-        // Método que consulta la API externa y devuelve el precio actual de la cripto especificada
         public async Task<decimal> ObtenerPrecioCripto(string cryptoCode)
         {
+            if (string.IsNullOrWhiteSpace(cryptoCode))
+                throw new ArgumentException("El código de la criptomoneda no puede estar vacío.");
+
+            var cryptoLower = cryptoCode.ToLower();
+
+            if (!CriptosValidas.Contains(cryptoLower))
+                throw new ArgumentException($"La criptomoneda '{cryptoCode}' no es soportada.");
+
             var client = _httpClientFactory.CreateClient();
-            string url = $"https://criptoya.com/api/satoshitango/{cryptoCode}/ars";
+            string url = $"https://criptoya.com/api/satoshitango/{cryptoLower}/ars";
 
             var response = await client.GetAsync(url);
+            var content = await response.Content.ReadAsStringAsync();
+
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Error al consultar la API: {response.StatusCode}");
+                throw new Exception($"Error al consultar la API: {response.StatusCode} - {content}");
             }
-
-            var content = await response.Content.ReadAsStringAsync();
 
             try
             {
-                var json = System.Text.Json.JsonDocument.Parse(content);
+                var json = JsonDocument.Parse(content);
+
                 if (!json.RootElement.TryGetProperty("ask", out var askElement))
-                {
                     throw new Exception("El campo 'ask' no se encuentra en la respuesta.");
-                }
 
                 return askElement.GetDecimal();
             }
-            catch (Exception ex)
+            catch (JsonException)
             {
-                throw new Exception($"Respuesta no es JSON válido: {ex.Message}");
+                throw new Exception($"Respuesta no es JSON válido: {content}");
             }
         }
+
     }
 }
